@@ -19,6 +19,9 @@ GOTO CANNOTCREATEDIR
 
 :COPYFILES
 echo ------- Copying add-in files
+
+copy AWSSDK.Core.dll "%M9%\%ADDINNAME%\"
+copy AWSSDK.S3.dll   "%M9%\%ADDINNAME%\"
 copy %ADDINNAME%.dll "%M9%\%ADDINNAME%\"
 copy %ADDINNAME%.dll.addin "%M9%\%ADDINNAME%\"
 copy %ADDINNAME%.uninstall.bat "%M9%\%ADDINNAME%\"

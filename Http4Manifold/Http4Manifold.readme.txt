@@ -1,31 +1,24 @@
 --Http4Manifold
---Manifold Release 9 Add-in created by Riivo Kolka in 2019.
+--Manifold Release 9 Add-in created by Riivo Kolka in 2025.
 
 
 
 -- $manifold$
 
--- HttpGet builds a new geom from `geom` where coord at `index` is replaced with `newCoord`
-FUNCTION HttpGet(@geom GEOM, @index INT32, @newCoord FLOAT64x2) GEOM AS SCRIPT FILE 'Http4Manifold.dll' ENTRY 'Script.HttpGet';
-
--- HttpPost builds a new geom from `geom` where coord at `index` is moved to `newCoord` and nearby coords are adjusted according to distance from change origin. 
--- Line endpoints are not adjusted, unless referred by `index`.
-FUNCTION HttpPost(@geom GEOM, @index INT32, @newCoord FLOAT64x2) GEOM AS SCRIPT FILE 'Http4Manifold.dll' ENTRY 'Script.HttpPost';
+List of functions
 
 --testing:
 
-?GeomWkt(HttpGet(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 0, VectorMakeX2(6,6)))
-?GeomWkt(HttpGet(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 1, VectorMakeX2(6,6)))
-?GeomWkt(HttpGet(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 2, VectorMakeX2(6,6)))
-?GeomWkt(HttpGet(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 3, VectorMakeX2(6,6)))
-?GeomWkt(HttpGet(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 4, VectorMakeX2(6,6)))
-?GeomWkt(HttpGet(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 5, VectorMakeX2(6,6)))
-?GeomWkt(HttpGet(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), -1, VectorMakeX2(6,6)))
+Examples
 
-?GeomWkt(HttpPost(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 0, VectorMakeX2(6,6)))
-?GeomWkt(HttpPost(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 1, VectorMakeX2(6,6)))
-?GeomWkt(HttpPost(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 2, VectorMakeX2(6,6)))
-?GeomWkt(HttpPost(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 3, VectorMakeX2(6,6)))
-?GeomWkt(HttpPost(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 4, VectorMakeX2(6,6)))
-?GeomWkt(HttpPost(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), 5, VectorMakeX2(6,6)))
-?GeomWkt(HttpPost(StringWktGeom('LINESTRING(0 1, 0 2, 0 3, 0 4, 0 5)'), -1, VectorMakeX2(6,6)))
+```sql9
+-- $manifold$
+-- $include$ [Http4Manifold.sql]
+
+
+SELECT 
+	HttpGetString('s3://eodata/Sentinel-2/MSI/L2A/2025/03/28/S2B_MSIL2A_20250328T114639_N0511_R023_T33XVG_20250328T135433.SAFE/MTD_MSIL2A.xml')
+FROM 
+	(VALUES (1))
+;
+```
