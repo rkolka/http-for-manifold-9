@@ -10,7 +10,7 @@ public class Script
     private static readonly string AddinName = "Http4Manifold";
     private static readonly string AddinCodeFolder = "Code\\Http4Manifold";
 
-    private static readonly string[] CodeFiles = { "Http4Manifold.sql" };
+    private static readonly string[] CodeFiles = { "Http4Manifold.sql", "Http4Manifold-examples.sql" };
 
 
     // The current application context provided by Manifold at run time
@@ -21,6 +21,10 @@ public class Script
 
     static Script()
     {
+        System.Diagnostics.Debug.WriteLine("Dll loading");
+
+        System.Diagnostics.Debug.WriteLine(Manifold is null);
+
         // Force TLS 1.2, if needed:
         System.Net.ServicePointManager.SecurityProtocol =
             System.Net.SecurityProtocolType.Tls12

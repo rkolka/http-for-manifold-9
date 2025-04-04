@@ -24,6 +24,8 @@ copy %ADDINNAME%.dll.addin "%M9%\%ADDINNAME%\"
 copy %ADDINNAME%.uninstall.bat "%M9%\%ADDINNAME%\"
 copy %ADDINNAME%.readme.txt "%M9%\%ADDINNAME%\"
 copy %ADDINNAME%.sql "%M9%\%ADDINNAME%\"
+copy %ADDINNAME%-examples.sql "%M9%\%ADDINNAME%\"
+
 goto END
 
 :CANNOTCREATEDIR
