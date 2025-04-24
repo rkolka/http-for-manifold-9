@@ -1,4 +1,4 @@
---Http4Manifold
+--http-for-manifold-9
 --Manifold Release 9 Add-in created by Riivo Kolka in 2025.
 
 
@@ -13,7 +13,7 @@ Examples
 
 ```sql9
 -- $manifold$
--- $include$ [Http4Manifold.sql]
+-- $include$ [http-for-manifold-9.sql]
 
 
 SELECT 

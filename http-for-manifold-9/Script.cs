@@ -15,10 +15,10 @@ using System.Web.Script.Serialization;
 
 public class Script
 {
-    private static readonly string AddinName = "Http4Manifold";
-    private static readonly string AddinCodeFolder = "Code\\Http4Manifold";
+    private static readonly string AddinName = "http-for-manifold-9";
+    private static readonly string AddinCodeFolder = "Code\\http-for-manifold-9";
 
-    private static readonly string[] CodeFiles = { "Http4Manifold.sql", "Http4Manifold-examples.sql" };
+    private static readonly string[] CodeFiles = { "http-for-manifold-9.sql", "http-for-manifold-9-examples.sql" };
 
 
     // The current application context provided by Manifold at run time
@@ -28,13 +28,10 @@ public class Script
     private static readonly HttpClient _httpClient;
     private static readonly IAmazonS3 _s3Client;
     private static string _bearer_token;
-
+    private static DateTime _bearer_token_expiresAt = DateTime.MinValue;
 
     static Script()
     {
-        System.Diagnostics.Debug.WriteLine("Dll loading");
-
-        System.Diagnostics.Debug.WriteLine(Manifold is null);
 
         // Force TLS 1.2, if needed:
         System.Net.ServicePointManager.SecurityProtocol =
@@ -74,34 +71,9 @@ public class Script
 
     private static string DisplayHelp()
     {
-        return "Use include directive:\r\n-- $include$ [Http4Manifold.sql]";
+        return "Use include directive in your queries:\r\n-- $include$ [http-for-manifold-9.sql]";
     }
 
-
-    public static string HttpGetString(string url)
-    {
-        try
-        {
-            // Wrap the async call in a sync call
-            return HttpGetInternal(url).GetAwaiter().GetResult();
-        }
-        catch (UriFormatException ex)
-        {
-            return "ERROR (UriFormatException): " + ex.Message;
-        }
-        catch (Exception ex)
-        {
-            return "ERROR (General Exception): " + ex.Message;
-        }
-    }
-
-    private static async Task<string> HttpGetInternal(string url)
-    {
-        HttpResponseMessage response = await _httpClient.GetAsync(url);
-        // Throw if not success
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
-    }
 
     public static string HttpPost(string uri, string postData, string contentType = "application/x-www-form-urlencoded")
     {
@@ -129,34 +101,28 @@ public class Script
         return await response.Content.ReadAsStringAsync();
     }
 
+
     /// <summary>
     /// Gets an OAuth token from the given tokenUrl using client credentials flow.
     /// This returns the raw access_token string (Bearer token) to the caller.
     /// </summary>
-    public static string HttpGetToken(string tokenUrl, string clientId, string clientSecret)
+    public static string HttpInitToken(string tokenUrl, string clientId, string clientSecret)
     {
         try
         {
-            // Synchronously wait for the async method
-            _bearer_token = HttpGetTokenInternal(tokenUrl, clientId, clientSecret).GetAwaiter().GetResult();
-            return _bearer_token;
+            int seconds = HttpInitTokenInternal(tokenUrl, clientId, clientSecret).GetAwaiter().GetResult();
+            return $"Token saved and good for {seconds} seconds.";
         }
         catch (Exception ex)
         {
-            // Return errors as a string so Manifold won't see null
             return "ERROR: " + ex.Message;
         }
-    }
-    public static string SetToken(string token)
-    {
-        _bearer_token = token;
-        return _bearer_token;
     }
 
 
     // Private async method that uses HttpClient to POST form-encoded data,
     // then parses the JSON response to extract "access_token".
-    private static async Task<string> HttpGetTokenInternal(string tokenUrl, string clientId, string clientSecret)
+    private static async Task<int> HttpInitTokenInternal(string tokenUrl, string clientId, string clientSecret)
     {
         // The standard client-credentials body:
         //   grant_type=client_credentials&client_id=...&client_secret=...
@@ -178,22 +144,52 @@ public class Script
 
             if (tokenData.ContainsKey("access_token"))
             {
-                return tokenData["access_token"];
+                _bearer_token = tokenData["access_token"];
+            }
+            else
+            {
+                throw new Exception("No access_token field found in response: " + json);
             }
 
-            throw new Exception("No access_token field found in response: " + json);
+            // If there's an expires_in, store the expiration
+            if (tokenData.ContainsKey("expires_in"))
+            {
+                // expires_in is in seconds. Let's convert to an absolute time.
+                int expiresSeconds = tokenData["expires_in"];
+                _bearer_token_expiresAt = DateTime.UtcNow.AddSeconds(expiresSeconds);
+                return expiresSeconds;
+            }
+            else
+            {
+                // fallback
+                _bearer_token_expiresAt = DateTime.UtcNow.AddMinutes(30);
+                return 1800;
+            }
         }
     }
 
+
+
+
     /// <summary>
     /// Performs an HTTP GET using an OAuth bearer token.
-    /// The token is passed in as a parameter.
     /// </summary>
-    public static string HttpGetWithToken(string url, string token)
+    public static string HttpGetString(string url, bool use_token)
     {
+        if (use_token && string.IsNullOrEmpty(_bearer_token))
+        {
+            return "No token initialized. Call HttpInitToken first.";
+        }
+
+        // Optionally check if token is expired or near expiry and refresh automatically
+        if (use_token && DateTime.UtcNow > _bearer_token_expiresAt)
+        {
+            return "Token expired, call HttpInitToken again.";
+        }
+
         try
         {
-            return HttpGetWithTokenInternal(url, token).GetAwaiter().GetResult();
+            return HttpGetStringInternal(url, use_token).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {
@@ -201,75 +197,84 @@ public class Script
         }
     }
 
-    private static async Task<string> HttpGetWithTokenInternal(string url, string token)
+
+    private static async Task<string> HttpGetStringInternal(string url, bool use_token)
     {
         // Build an HTTP request with the Bearer token
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        if (use_token)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _bearer_token);
+        }
 
         // Perform the request
-        using (var response = await _httpClient.SendAsync(request))
-        {
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
-        }
+        HttpResponseMessage response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
     }
 
-    // NEW Function: Downloads content from URL as byte array
-    public static byte[] HttpGetBinary(string url)
+ 
+    public static byte[] HttpGetBinary(string url, bool use_token)
     {
-        if (string.IsNullOrWhiteSpace(url))
+        if (use_token && string.IsNullOrEmpty(_bearer_token))
         {
-            System.Diagnostics.Debug.WriteLine("HttpGetBinary ERROR: URL is empty.");
-            // Return null or empty array on error? Throwing exception might be better for SQL.
-            // SQL typically expects NULL on function error if return type allows it.
-            // However, VARBINARY might not be nullable in all contexts. Let's throw.
-            throw new ArgumentNullException(nameof(url));
+            return Encoding.UTF8.GetBytes("No token initialized. Call HttpInitToken first.");
+        }
+
+        if (use_token && DateTime.UtcNow > _bearer_token_expiresAt)
+        {
+            return Encoding.UTF8.GetBytes("Token expired, call HttpInitToken again.");
         }
 
         try
         {
-            // Use sync-over-async approach
-            return HttpGetBinaryInternal(url).GetAwaiter().GetResult();
-        }
-        catch (HttpRequestException ex)
-        {
-            // Log the error and re-throw or wrap it
-            System.Diagnostics.Debug.WriteLine($"HttpGetBinary ERROR (HttpRequestException): {ex.Message} (URL: {url})");
-            // Rethrowing allows SQL to handle the error (often results in NULL)
-            throw new HttpRequestException($"Failed to download binary data from {url}. Error: {ex.Message}", ex);
+            return HttpGetBinaryInternal(url, true).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"HttpGetBinary ERROR (General Exception): {ex.ToString()} (URL: {url})");
-            throw new Exception($"An unexpected error occurred downloading binary data from {url}. Error: {ex.Message}", ex);
+            return Encoding.UTF8.GetBytes(ex.Message); ;
         }
     }
 
-    private static async Task<byte[]> HttpGetBinaryInternal(string url)
+    private static async Task<byte[]> HttpGetBinaryInternal(string url, bool use_token)
     {
-        // Download data into memory
-        byte[] data = await _httpClient.GetByteArrayAsync(url);
-        if (data == null || data.Length == 0)
+        // Build an HTTP request with the Bearer token
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+        if (use_token)
         {
-            // Consider throwing an exception if empty data is an error condition
-            System.Diagnostics.Debug.WriteLine($"HttpGetBinary WARNING: Downloaded data is empty for URL: {url}");
-            // Depending on requirements, you might return empty array or throw:
-            // throw new Exception("Downloaded data is empty.");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _bearer_token);
         }
+
+        // Perform the request
+        HttpResponseMessage response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        byte[] data = await response.Content.ReadAsByteArrayAsync();
         return data;
     }
 
 
-    public static string HttpDownload(string url, string localFilePath)
+    public static string HttpDownload(string url, string localFilePath, bool use_token)
     {
         if (string.IsNullOrWhiteSpace(url))
         {
             return "ERROR: URL cannot be empty.";
         }
+        
         if (string.IsNullOrWhiteSpace(localFilePath))
         {
             return "ERROR: Local file path cannot be empty.";
+        }
+
+        if (use_token && string.IsNullOrEmpty(_bearer_token))
+        {
+            return "No token initialized. Call HttpInitToken first.";
+        }
+
+        if (use_token && DateTime.UtcNow > _bearer_token_expiresAt)
+        {
+            return "Token expired, call HttpInitToken again.";
         }
 
         try
@@ -282,24 +287,28 @@ public class Script
             }
 
             // Use sync-over-async for simplicity
-            HttpDownloadInternal(url, localFilePath).GetAwaiter().GetResult();
+            HttpDownloadInternal(url, localFilePath, use_token).GetAwaiter().GetResult();
             return $"Success: Downloaded '{url}' to '{localFilePath}'";
-        }
-        catch (HttpRequestException ex)
-        {
-            return $"ERROR (HttpRequestException): {ex.Message} (URL: {url})";
         }
         catch (Exception ex)
         {
             // Catch specific exceptions like DirectoryNotFoundException, UnauthorizedAccessException etc. if needed
-            return $"ERROR (General Exception): {ex.Message} (URL: {url})";
+            return $"ERROR: {ex.Message}";
         }
     }
 
-    private static async Task HttpDownloadInternal(string url, string localFilePath)
+    private static async Task HttpDownloadInternal(string url, string localFilePath, bool use_token)
     {
+        // Build an HTTP request with the Bearer token
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+        if (use_token)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _bearer_token);
+        }
+
         // Use GetAsync with HttpCompletionOption.ResponseHeadersRead for efficiency with large files
-        using (HttpResponseMessage response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+        using (HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
         {
             response.EnsureSuccessStatusCode(); // Throw if download failed
 

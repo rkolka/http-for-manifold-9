@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Http4Manifold")]
+[assembly: AssemblyTitle("http-for-manifold-9-test")]
 [assembly: AssemblyDescription("Manifold Release 9 add-in created by Riivo Kolka")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Kuus Koma Kaks Kaheksa")]
-[assembly: AssemblyProduct("Http4Manifold")]
-[assembly: AssemblyCopyright("Copyright © Riivo Kolka, Kuus Koma Kaks Kaheksa 2021")]
+[assembly: AssemblyProduct("Test http-for-manifold-9-test")]
+[assembly: AssemblyCopyright("Copyright © Kuus Koma Kaks Kaheksa 2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("2a12d190-c93c-4cd1-b66c-3e5456741ea3")]
+[assembly: Guid("42FF26B9-5DE1-4FA7-8FA1-724FFFA63F14")]
 
 // Version information for an assembly consists of the following four values:
 //

@@ -3,7 +3,7 @@ setlocal
 
 set M9=C:\Program Files\Manifold\v9.0\shared
 
-set ADDINNAME=Http4Manifold
+set ADDINNAME=http-for-manifold-9
 
 
 if exist "%M9%\%ADDINNAME%\" GOTO ALREADYINSTALLED

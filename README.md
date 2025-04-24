@@ -1,4 +1,4 @@
-# Http4Manifold
+# http-for-manifold-9
  Manifold 9 addin
 
 - `FUNCTION HttpGet(@geom GEOM, @index INT32, @newCoord FLOAT64x2) GEOM`
